@@ -1,35 +1,53 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './Layout'; // Importamos el Layout
+import Home from './pages/Home'; // Importamos las páginas
+//import DigitRecognizer from './pages/DigitRecognizer';
+//import PneumoniaDetector from './pages/PneumoniaDetector';
+//import SentimentAnalyzer from './pages/SentimentAnalyzer';
+
+// Estos son componentes "dummy" o de reemplazo
+// para que el código funcione sin errores.
+// ¡Tú crearás los reales!
+const DigitRecognizerPlaceholder = () => <h1 className="text-3xl font-bold">Página del Reconocedor de Dígitos</h1>;
+const PneumoniaDetectorPlaceholder = () => <h1 className="text-3xl font-bold">Página del Detector de Neumonía</h1>;
+const SentimentAnalyzerPlaceholder = () => <h1 className="text-3xl font-bold">Página del Analizador de Sentimientos</h1>;
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    // 1. BrowserRouter envuelve TODO. Es el que habilita la magia del enrutamiento.
+    <BrowserRouter>
+      {/* 2. Layout envuelve las Rutas para que el Header y Footer 
+              siempre estén visibles. */}
+      <Layout>
+        {/* 3. Routes es el "controlador de tráfico" que mira la URL. */}
+        <Routes>
+          {/* 4. Esta es la Ruta 1 (la principal). 
+                 Si la URL es "/", muestra el componente <Home /> */}
+          <Route path="/" element={<Home />} />
+
+          {/* 5. Esta es la Ruta 2. 
+                 Si la URL es "/reconocedor-digitos", muestra el componente... */}
+          <Route 
+            path="/reconocedor-digitos" 
+            element={<DigitRecognizerPlaceholder />} 
+          />
+
+          {/* 6. Esta es la Ruta 3. */}
+          <Route 
+            path="/detector-neumonia" 
+            element={<PneumoniaDetectorPlaceholder />} 
+          />
+
+          {/* 7. Esta es la Ruta 4. */}
+          <Route 
+            path="/analisis-sentimiento" 
+            element={<SentimentAnalyzerPlaceholder />} 
+          />
+        </Routes>
+      </Layout>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
