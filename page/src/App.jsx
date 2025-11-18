@@ -1,14 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './Layout'; // Importamos el Layout
-import Home from './pages/Home'; // Importamos las páginas
-//import DigitRecognizer from './pages/DigitRecognizer';
-//import PneumoniaDetector from './pages/PneumoniaDetector';
-//import SentimentAnalyzer from './pages/SentimentAnalyzer';
+import Home from './pages/Home';
+import DigitRecognizer from './pages/DigitRecognizer';
 
 // Estos son componentes "dummy" o de reemplazo
-// para que el código funcione sin errores.
-// ¡Tú crearás los reales!
-const DigitRecognizerPlaceholder = () => <h1 className="text-3xl font-bold">Página del Reconocedor de Dígitos</h1>;
 const PneumoniaDetectorPlaceholder = () => <h1 className="text-3xl font-bold">Página del Detector de Neumonía</h1>;
 const SentimentAnalyzerPlaceholder = () => <h1 className="text-3xl font-bold">Página del Analizador de Sentimientos</h1>;
 
@@ -29,8 +24,8 @@ function App() {
           {/* 5. Esta es la Ruta 2. 
                  Si la URL es "/reconocedor-digitos", muestra el componente... */}
           <Route 
-            path="/reconocedor-digitos" 
-            element={<DigitRecognizerPlaceholder />} 
+            path="/reconocedor-digitos"
+            element={<DigitRecognizer />}
           />
 
           {/* 6. Esta es la Ruta 3. */}

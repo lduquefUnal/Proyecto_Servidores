@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Disclosure, Menu,} from '@headlessui/react';
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import logoSrc from './assets/Logo.png'; // 1. Importamos la imagen del logo
 
 const navigation = [
   { name: 'Home', href: '/', current: true },
@@ -16,7 +17,7 @@ function classNames(...classes) {
 
 function Layout({ children }) {
   const location = useLocation();
-  const isHome = location.pathname === '/';
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 font-sans">
       {/* HEADER / NAVEGACIÓN */}
@@ -41,24 +42,24 @@ function Layout({ children }) {
                   <div className="flex shrink-0 items-center">
                     <img
                       alt="Logo"
-                      src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-                      className="h-8 w-auto"
+                      src={logoSrc} // 2. Usamos la variable importada
+                      className="h-9 w-auto" // Aumenté un poco la altura para que se vea mejor
                     />
                   </div>
                   <div className="hidden sm:ml-6 sm:block">
                     <div className="flex space-x-4">
                       {navigation.map((item) => (
-                        <button
+                        <Link
                           key={item.name}
-                          onClick={() => window.location.href = item.href}
+                          to={item.href}
                           className={classNames(
-                            item.current ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
+                            location.pathname === item.href ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
                             'rounded-md px-3 py-2 text-sm font-medium'
                           )}
-                          aria-current={item.current ? 'page' : undefined}
+                          aria-current={location.pathname === item.href ? 'page' : undefined}
                         >
                           {item.name}
-                        </button>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -134,14 +135,14 @@ function Layout({ children }) {
               <div className="space-y-1 px-2 pb-3 pt-2">
                 {navigation.map((item) => (
                   <Disclosure.Button
+                    as={Link}
                     key={item.name}
-                    as="button"
-                    onClick={() => window.location.href = item.href}
+                    to={item.href}
                     className={classNames(
-                      item.current ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                      'block w-full text-left rounded-md px-3 py-2 text-base font-medium'
+                      location.pathname === item.href ? 'bg-gray-950/50 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
+                      'block rounded-md px-3 py-2 text-base font-medium'
                     )}
-                    aria-current={item.current ? 'page' : undefined}
+                    aria-current={location.pathname === item.href ? 'page' : undefined}
                   >
                     {item.name}
                   </Disclosure.Button>
@@ -158,7 +159,7 @@ function Layout({ children }) {
       </main>
 
       {/* Footer - Solo aparece en la página principal */}
-      {isHome && (
+      {location.pathname === '/' && (
         <footer className="bg-gray-800 text-white py-6">
           <div className="container mx-auto px-6 text-center">
             <p>&copy; 2025 Portafolio de Modelos IA</p>
