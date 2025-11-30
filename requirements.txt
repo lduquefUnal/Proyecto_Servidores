@@ -1,2 +1,4 @@
-pysentimiento
-transformers
+torch          # Necesaria para modelos PyTorch (librería base de ML)
+scikit-learn   # Necesaria si usas modelos tradicionales (librería de ML)
+pysentimiento  # La librería de Hugging Face que usamos para el análisis de sentimiento
+numpy          # Librería fundamental para operaciones matemáticas y arrays
