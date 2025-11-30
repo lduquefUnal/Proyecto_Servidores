@@ -27,64 +27,60 @@ def model_fn(model_dir):
     """
     logger.info("Buscando y cargando modelos...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     models = {}
 
-    # Mapeo de nombres de archivo a clases de modelo y transformaciones
-    # Esto hace que el sistema sea extensible. ¡Solo necesitas añadir una entrada aquí para un nuevo modelo!
-    # Ajustado para buscar en la carpeta 'mnist/' como en tu descripción.
-    vision_model_map = {
-        "hybrid_cnn_mnist_weights": {"class": Hybrid_QNN, "transform": get_transform_hqnn(), "path": "mnist/hybrid_cnn_mnist_weights.pth"},
-        "cnn_mnist_weights": {"class": CNN, "transform": get_transform_cnn(), "path": "mnist/cnn_mnist_weights.pth"}
-        # Añade aquí otros modelos: "nombre_modelo": {"class": ClaseModelo, "transform": su_transformacion}
+    # Mapeo de nombres de archivo a clases de modelo y transformaciones para descubrimiento dinámico
+    model_discovery_map = {
+        "hybrid_cnn_mnist_weights.pth": {"class": Hybrid_QNN, "transform": get_transform_hqnn(), "type": "vision"},
+        "cnn_mnist_weights.pth": {"class": CNN, "transform": get_transform_cnn(), "type": "vision"},
+        "model_pysentimiento": {"type": "nlp"}, # Es un directorio
+        "svm_countvectorizer": {"type": "svm"}, # Es un directorio
+        "svm_tfidfvectorizer": {"type": "svm"}  # Es un directorio
     }
 
-    # 1. Cargar modelos de visión
-    for model_name, model_info in vision_model_map.items():
-        model_path = os.path.join(model_dir, model_info["path"])
-        if os.path.exists(model_path):
-            logger.info(f"Cargando modelo de visión '{model_name}'")
-            model_instance = model_info["class"]()
-            model_instance.load_state_dict(torch.load(model_path, map_location=device))
-            model_instance.to(device).eval()
-            models[model_name] = {
-                "type": "vision",
-                "model": model_instance,
-                "transform": model_info["transform"]
-            }
-        else:
-            logger.warning(f"Archivo de pesos no encontrado para el modelo '{model_name}': {model_path}")
+    logger.info(f"Recorriendo el directorio del modelo: {model_dir}")
+    for root, dirs, files in os.walk(model_dir):
+        # Combinamos directorios y archivos para la búsqueda
+        for name in files + dirs:
+            if name in model_discovery_map:
+                model_name = name.replace(".pth", "") if name.endswith(".pth") else name
+                model_info = model_discovery_map[name]
+                model_type = model_info["type"]
+                full_path = os.path.join(root, name)
 
-    # 2. Cargar modelo de Pysentimiento
-    pysentimiento_path = os.path.join(model_dir, "sentimientos", "model_pysentimiento")
-    if os.path.isdir(pysentimiento_path):
-        logger.info("Cargando modelo de Pysentimiento")
-        # Usamos el model_name para apuntar a la carpeta local
-        analyzer = create_analyzer(task="sentiment", lang="es", model_name=pysentimiento_path)
-        models["pysentimiento-robertuito"] = {
-            "type": "nlp",
-            "model": analyzer
-        }
-    else:
-        logger.warning(f"Directorio no encontrado para el modelo de pysentimiento: {pysentimiento_path}")
+                if model_type == "vision" and os.path.isfile(full_path):
+                    logger.info(f"Cargando modelo de visión '{model_name}' desde {full_path}")
+                    model_instance = model_info["class"]()
+                    model_instance.load_state_dict(torch.load(full_path, map_location=device))
+                    model_instance.to(device).eval()
+                    models[model_name] = {
+                        "type": "vision",
+                        "model": model_instance,
+                        "transform": model_info["transform"]
+                    }
 
-    # 3. Cargar modelos SVM
-    svm_dirs = ["svm_countvectorizer", "svm_tfidfvectorizer"]
-    for svm_dir_name in svm_dirs:
-        svm_dir_path = os.path.join(model_dir, "sentimientos", svm_dir_name)
-        if os.path.isdir(svm_dir_path):
-            logger.info(f"Cargando modelo SVM desde '{svm_dir_name}'")
-            try:
-                svm_model = joblib.load(os.path.join(svm_dir_path, "model.joblib"))
-                vectorizer = joblib.load(os.path.join(svm_dir_path, "vectorizer.joblib"))
-                models[svm_dir_name] = {
-                    "type": "svm",
-                    "model": svm_model,
-                    "vectorizer": vectorizer
-                }
-            except FileNotFoundError as e:
-                logger.error(f"Faltan archivos en {svm_dir_name}: {e}")
+                elif model_type == "nlp" and os.path.isdir(full_path):
+                    # El nombre del modelo para la API será "pysentimiento-robertuito"
+                    api_model_name = "pysentimiento-robertuito"
+                    logger.info(f"Cargando modelo de Pysentimiento '{api_model_name}' desde {full_path}")
+                    analyzer = create_analyzer(task="sentiment", lang="es", model_name=full_path)
+                    models[api_model_name] = {
+                        "type": "nlp",
+                        "model": analyzer
+                    }
 
+                elif model_type == "svm" and os.path.isdir(full_path):
+                    logger.info(f"Cargando modelo SVM '{model_name}' desde {full_path}")
+                    try:
+                        svm_model = joblib.load(os.path.join(full_path, "model.joblib"))
+                        vectorizer = joblib.load(os.path.join(full_path, "vectorizer.joblib"))
+                        models[model_name] = {
+                            "type": "svm",
+                            "model": svm_model,
+                            "vectorizer": vectorizer
+                        }
+                    except FileNotFoundError as e:
+                        logger.error(f"Faltan archivos en {model_name}: {e}")
 
     if not models:
         raise RuntimeError("¡No se pudo cargar ningún modelo!")
@@ -157,7 +153,7 @@ def predict_fn(input_data, models):
         # Mapeo de etiquetas para pysentimiento
         label_mapping = {'POS': 'POSITIVO', 'NEG': 'NEGATIVO', 'NEU': 'NEUTRO'}
         
-        # Devolvemos un diccionario ya formateado
+        # Devolvemos un diccionario ya formateado para output_fn
         return {
             "prediction": label_mapping.get(resultado.output, 'NEUTRO'),
             "confidence_scores": {label_mapping.get(k, k): v for k, v in resultado.probas.items()},

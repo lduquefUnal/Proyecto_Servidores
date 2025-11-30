@@ -1,0 +1,4 @@
+
+
+
+tar -h -czvf model.tar.gz my_model_dir/

@@ -3,6 +3,7 @@
 # Ejemplo: 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.1.0-cpu-py310-ubuntu20.04
 # O si necesitas GPU: 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.1.0-gpu-py310-cu121-ubuntu20.04
 FROM  public.ecr.aws/deep-learning-containers/pytorch-inference:2.6.0-cpu-py312-ubuntu22.04-ec2-v1.43
+# 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.13.1-cpu-py39
 
 # Crea la carpeta /opt/ml/code donde SageMaker espera encontrar el código
 # Esta carpeta ya puede existir en las imágenes de inferencia de AWS, pero es bueno ser explícito.
