@@ -9,6 +9,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 # Importaciones de librerías de modelos
+# Asegúrate de que este archivo (modelcnn.py) esté en el mismo directorio 'code/'
 from modelcnn import CNN, Hybrid_QNN
 from pysentimiento import create_analyzer
 import joblib
@@ -23,11 +24,18 @@ logger = logging.getLogger(__name__)
 def model_fn(model_dir):
     """
     Carga TODOS los modelos disponibles desde el directorio de modelos.
+    Carga el modelo Hybrid_QNN.
     Esta función se ejecuta una vez al iniciar el contenedor.
+    Espera encontrar un archivo 'model.pth' en el directorio 'model_dir'.
     """
     logger.info("Buscando y cargando modelos...")
+    logger.info("Cargando el modelo Hybrid_QNN...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     models = {}
+    
+    model_path = os.path.join(model_dir, "model.pth")
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"No se encontró 'model.pth' en {model_dir}")
 
     # Mapeo de nombres de archivo a clases de modelo y transformaciones para descubrimiento dinámico
     model_discovery_map = {
@@ -37,6 +45,12 @@ def model_fn(model_dir):
         "svm_countvectorizer": {"type": "svm"}, # Es un directorio
         "svm_tfidfvectorizer": {"type": "svm"}  # Es un directorio
     }
+    model = Hybrid_QNN()
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device).eval()
+    
+    logger.info("Modelo Hybrid_QNN cargado exitosamente.")
+    return {"model": model, "transform": get_transform_hqnn()}
 
     logger.info(f"Recorriendo el directorio del modelo: {model_dir}")
     for root, dirs, files in os.walk(model_dir):
@@ -94,6 +108,7 @@ def input_fn(request_body, request_content_type):
     Deserializa los datos de entrada. Espera un JSON con "model" y "input".
     - Para visión: "input" es una imagen en base64.
     - Para nlp: "input" es un string de texto.
+    Deserializa los datos de entrada. Espera un JSON con "input" (imagen en base64).
     """
     logger.info(f"Procesando entrada con content-type: {request_content_type}")
     if request_content_type == 'application/json':
@@ -114,15 +129,22 @@ def input_fn(request_body, request_content_type):
 
 
 def predict_fn(input_data, models):
+def predict_fn(input_data, model_package):
     """
     Realiza la inferencia usando el modelo y la transformación correctos.
     """
     model_name = input_data["model"]
     logger.info(f"Realizando predicción con el modelo: '{model_name}'")
+    logger.info("Ejecutando inferencia de visión para Hybrid_QNN")
+    image_b64 = input_data["input"]
+    image_data = base64.b64decode(image_b64)
+    image = Image.open(BytesIO(image_data))
     
     # Verificamos si el modelo solicitado está cargado
     if model_name not in models:
         raise ValueError(f"Modelo '{model_name}' no encontrado. Modelos disponibles: {list(models.keys())}")
+    model = model_package["model"]
+    transform = model_package["transform"]
     
     model_package = models[model_name]
     model_type = model_package["type"]
@@ -132,6 +154,12 @@ def predict_fn(input_data, models):
         image_b64 = input_data["input"]
         image_data = base64.b64decode(image_b64)
         image = Image.open(BytesIO(image_data))
+    input_tensor = transform(image).unsqueeze(0)
+    device = next(model.parameters()).device
+    input_tensor = input_tensor.to(device)
+    
+    with torch.no_grad():
+        prediction = model(input_tensor)
         
         model = model_package["model"]
         transform = model_package["transform"]
@@ -143,6 +171,8 @@ def predict_fn(input_data, models):
         with torch.no_grad():
             prediction = model(input_tensor)
         return {"prediction": prediction, "type": "vision"}
+    # La función output_fn espera un diccionario, así que lo preparamos aquí.
+    return {"prediction": prediction}
 
     elif model_type == "nlp":
         logger.info("Ejecutando inferencia de NLP")
@@ -204,6 +234,15 @@ def output_fn(prediction, response_content_type):
             svm_output = prediction.copy()
             del svm_output["type"]
             return json.dumps(svm_output)
+        vision_output = prediction["prediction"]
+        probabilities = torch.nn.functional.softmax(vision_output[0], dim=0)
+        predicted_idx = torch.argmax(probabilities).item()
+        
+        response = {
+            'predicted_class': predicted_idx,
+            'probabilities': [f"{p:.6f}" for p in probabilities.tolist()]
+        }
+        return json.dumps(response)
 
     else:
         raise ValueError(f"Content-Type no soportado: {response_content_type}")
