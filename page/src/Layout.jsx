@@ -1,27 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Disclosure, Menu,} from '@headlessui/react';
-import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import logoSrc from './assets/Logo.png'; // 1. Importamos la imagen del logo
+import { Disclosure, Menu } from '@headlessui/react';
+import { Bars3Icon, BellIcon, XMarkIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import logoSrc from './assets/Logo.png';
 
 const navigation = [
   { name: 'Home', href: '/', current: true },
   { name: 'Reconocedor de Dígitos', href: '/reconocedor-digitos', current: false },
   { name: 'Detector de Neumonía', href: '/detector-neumonia', current: false },
   { name: 'Análisis de Sentimiento', href: '/analisis-sentimiento', current: false },
+  { name: 'Quiénes Somos', href: '/quienes-somos', current: false },
 ];
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
+import TechLogos from './components/TechLogos';
+
 function Layout({ children }) {
   const location = useLocation();
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const handleThemeSwitch = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-200">
       {/* HEADER / NAVEGACIÓN */}
-      <Disclosure as="header" className="bg-gray-800/50 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10">
+      <Disclosure as="header" className="bg-gray-800/50 backdrop-blur-md after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10 sticky top-0 z-50">
         {({ open }) => (
           <>
             <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -42,8 +58,8 @@ function Layout({ children }) {
                   <div className="flex shrink-0 items-center">
                     <img
                       alt="Logo"
-                      src={logoSrc} // 2. Usamos la variable importada
-                      className="h-9 w-auto" // Aumenté un poco la altura para que se vea mejor
+                      src={logoSrc}
+                      className="h-9 w-auto"
                     />
                   </div>
                   <div className="hidden sm:ml-6 sm:block">
@@ -67,7 +83,20 @@ function Layout({ children }) {
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
                   <button
                     type="button"
+                    onClick={handleThemeSwitch}
                     className="relative rounded-full p-1 text-gray-400 hover:text-white focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+                  >
+                    <span className="absolute -inset-1.5" />
+                    <span className="sr-only">Toggle theme</span>
+                    {theme === 'light' ? (
+                      <MoonIcon className="h-6 w-6" aria-hidden="true" />
+                    ) : (
+                      <SunIcon className="h-6 w-6" aria-hidden="true" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="relative rounded-full p-1 text-gray-400 hover:text-white focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500 ml-3"
                   >
                     <span className="absolute -inset-1.5" />
                     <span className="sr-only">View notifications</span>
@@ -158,14 +187,15 @@ function Layout({ children }) {
         {children}
       </main>
 
-      {/* Footer - Solo aparece en la página principal */}
-      {location.pathname === '/' && (
-        <footer className="bg-gray-800 text-white py-6">
-          <div className="container mx-auto px-6 text-center">
-            <p>&copy; 2025 Portafolio de Modelos IA</p>
-          </div>
-        </footer>
-      )}
+      {/* Tech Logos Section */}
+      <TechLogos />
+
+      {/* Footer */}
+      <footer className="bg-gray-800 dark:bg-gray-950 text-white py-6">
+        <div className="container mx-auto px-6 text-center">
+          <p>&copy; 2025 Portafolio de Modelos IA</p>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.ipynb_checkpoints
+__pycache__S
+.venv
