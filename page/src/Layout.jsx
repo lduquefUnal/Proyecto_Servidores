@@ -17,6 +17,7 @@ function classNames(...classes) {
 }
 
 import TechLogos from './components/TechLogos';
+import AIChatWidget from './components/AIChatWidget';
 
 function Layout({ children }) {
   const location = useLocation();
@@ -186,6 +187,8 @@ function Layout({ children }) {
       <main className="flex-grow container mx-auto px-6 py-8">
         {children}
       </main>
+
+      <AIChatWidget />
 
       {/* Tech Logos Section */}
       <TechLogos />

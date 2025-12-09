@@ -1,15 +1,16 @@
 import React from 'react';
 import HeroCard from '../components/HeroCard';
 import TechLogos from '../components/TechLogos';
-
+import diego from '../assets/diego.png';
+import Luis from '../assets/Luis.jpg';
 const AboutUs = () => {
   const teamMembers = [
     {
       name: 'Luis Duque',
       role: 'Machine Learning & Cloud Enthusiast',
-      imageUrl: 'https://avatars.githubusercontent.com/u/102399623?v=4',
-      githubUrl: 'https://github.com/luiseduquefe',
-      linkedinUrl: 'https://www.linkedin.com/in/luis-eduardo-duque-fe-a42829238/',
+      imageUrl: Luis,
+      githubUrl: 'https://github.com/lduquefUnal  ',
+      linkedinUrl: 'www.linkedin.com/in/luis-santiago-duque-franco-0718ab258',
     },
     {
       name: 'Simon Londoño',
@@ -21,7 +22,7 @@ const AboutUs = () => {
     {
       name: 'Juan Diego Oliva',
       role: 'Data Scientist & Backend Developer',
-      imageUrl: 'https://avatars.githubusercontent.com/u/102399623?v=4',
+      imageUrl: diego,
       githubUrl: 'https://github.com/JuanOliva2002',
       linkedinUrl: 'https://www.linkedin.com/in/juan-diego-oliva-ramirez-2a5563244/',
     },
