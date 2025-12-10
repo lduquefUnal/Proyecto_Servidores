@@ -1,7 +1,19 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ProjectDetail from '../components/ProjectDetail';
 import ExamplesCarousel from '../components/ExamplesCarousel';
 import exampleDigitImg from '../assets/digit.png'; // Using an example digit image from assets
+
+const S3_SAMPLES_BASE = 'https://test-data-model-sagemaker.s3.us-east-1.amazonaws.com/mnist_samples';
+const S3_MANIFEST_URL = `${S3_SAMPLES_BASE}/manifest.txt`;
+
+const shuffleArray = (arr) => {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
 
 const DigitRecognizer = () => {
   const canvasRef = useRef(null);
@@ -9,6 +21,9 @@ const DigitRecognizer = () => {
   const [predictions, setPredictions] = useState([]);
   const [model, setModel] = useState('clasico');
   const [isLoading, setIsLoading] = useState(false);
+  const [examples, setExamples] = useState([
+    { type: 'image', value: exampleDigitImg, alt: 'Número 7 de ejemplo' },
+  ]);
 
   const API_ENDPOINTS = {
     clasico: 'https://qigfixb3zd.execute-api.us-east-1.amazonaws.com/default/predict/mnist_classical',
@@ -25,6 +40,31 @@ const DigitRecognizer = () => {
     context.lineWidth = 18;
     clearCanvas();
   }, []);
+
+  const loadRandomExamples = useCallback(async () => {
+    try {
+      const res = await fetch(S3_MANIFEST_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Manifest fetch failed: ${res.status}`);
+      const text = await res.text();
+      const files = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (!files.length) throw new Error('Manifest vacío');
+      const mapped = files.map((name) => ({
+        type: 'image',
+        value: `${S3_SAMPLES_BASE}/${name}`,
+        alt: name,
+        label: name,
+      }));
+      const selection = shuffleArray(mapped).slice(0, Math.min(12, mapped.length)); // muestra 12 aleatorias
+      setExamples(selection);
+    } catch (err) {
+      console.error('No se pudo cargar el manifest de ejemplos MNIST:', err);
+      setExamples([{ type: 'image', value: exampleDigitImg, alt: 'Número 7 de ejemplo' }]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRandomExamples();
+  }, [loadRandomExamples]);
 
   const getCoords = (event) => {
     const canvas = canvasRef.current;
@@ -72,7 +112,7 @@ const DigitRecognizer = () => {
     img.onload = () => {
       // Scale image to fit canvas
       context.drawImage(img, 0, 0, context.canvas.width, context.canvas.height);
-    }
+    };
   };
 
   const handleSubmit = async () => {
@@ -110,12 +150,6 @@ const DigitRecognizer = () => {
       setIsLoading(false);
     }
   };
-
-  const examples = [
-    { type: 'image', value: exampleDigitImg, alt: 'Número 7 de ejemplo' },
-    // You can add more images here if you have them in your assets
-    // { type: 'image', value: exampleDigitImg2, alt: 'Número 2 de ejemplo' },
-  ];
 
   const projectDetails = {
     description: "Este proyecto compara un modelo de Red Neuronal Convolucional (CNN) clásico con un modelo híbrido Cuántico-Clásico para el reconocimiento de dígitos manuscritos del dataset MNIST. El modelo clásico es una CNN estándar. El modelo híbrido reemplaza la última capa densa de la CNN con un circuito cuántico variacional, explorando el potencial de la computación cuántica para tareas de machine learning. Ambos modelos están desplegados en AWS SageMaker.",
@@ -184,7 +218,13 @@ const DigitRecognizer = () => {
         </div>
       </div>
       
-      <ExamplesCarousel examples={examples} onSelect={loadAndDrawImage} title="Prueba con una imagen de ejemplo" />
+      <ExamplesCarousel
+        examples={examples}
+        onSelect={loadAndDrawImage}
+        title="Prueba con una imagen de ejemplo"
+        imageHeightClass="h-80"
+        imageClassName="w-72 h-72 sm:w-80 sm:h-80 object-contain"
+      />
       
       <ProjectDetail details={projectDetails} />
 

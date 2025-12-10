@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-const ExamplesCarousel = ({ examples, onSelect, title = "Prueba con un ejemplo" }) => {
+const ExamplesCarousel = ({
+  examples,
+  onSelect,
+  title = "Prueba con un ejemplo",
+  imageHeightClass = "h-40",
+  imageClassName = "w-full h-full object-contain",
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!examples || examples.length === 0) {
@@ -28,15 +34,24 @@ const ExamplesCarousel = ({ examples, onSelect, title = "Prueba con un ejemplo" 
       <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-4 shadow-inner">
         
         {/* Carousel Content */}
-        <div className="overflow-hidden h-40 flex items-center justify-center text-center">
+        <div className={`overflow-hidden ${imageHeightClass} flex items-center justify-center text-center`}>
           {currentExample.type === 'image' ? (
-            <img src={currentExample.value} alt={currentExample.alt || 'Ejemplo'} className="max-h-full max-w-full object-contain rounded" />
+            <img
+              src={currentExample.value}
+              alt={currentExample.alt || 'Ejemplo'}
+              className={`${imageClassName} rounded`}
+            />
           ) : (
             <p className="text-gray-800 dark:text-gray-200 text-lg px-4">
               "{currentExample.value}"
             </p>
           )}
         </div>
+        {(currentExample.label || currentExample.alt) && (
+          <p className="mt-3 text-sm font-semibold text-gray-700 dark:text-gray-200 text-center">
+            {currentExample.label || currentExample.alt}
+          </p>
+        )}
 
         {/* Navigation */}
         <div className="absolute inset-y-0 left-0 flex items-center">

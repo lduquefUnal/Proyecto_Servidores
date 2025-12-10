@@ -1,10 +1,31 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import ProjectDetail from '../components/ProjectDetail';
 import ExamplesCarousel from '../components/ExamplesCarousel';
 import { FaUpload, FaTimes } from 'react-icons/fa';
 
-// Placeholder for an example X-ray image. Replace with actual images in assets if available.
-const exampleXRay = 'https://images.unsplash.com/photo-1579684385127-6c1d7349e2c5?q=80&w=1080&auto=format&fit=crop';
+const shuffleArray = (items) => {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+const s3Examples = [
+  {
+    type: 'image',
+    value: 'https://test-data-model-sagemaker.s3.us-east-1.amazonaws.com/neumonia_test_data/NORMAL/NORMAL2-IM-0045-0001.jpeg',
+    alt: 'Radiografía de tórax normal',
+    label: 'NORMAL2-IM-0045-0001.jpeg',
+  },
+  {
+    type: 'image',
+    value: 'https://test-data-model-sagemaker.s3.us-east-1.amazonaws.com/neumonia_test_data/PNEUMONIA/person102_bacteria_487.jpeg',
+    alt: 'Radiografía de tórax con neumonía',
+    label: 'person102_bacteria_487.jpeg',
+  },
+];
 
 const UnderConstructionBanner = ({ onDismiss }) => (
   <div className="absolute inset-x-0 top-0 bg-yellow-400/80 dark:bg-yellow-600/80 backdrop-blur-sm text-center p-4 z-50 flex items-center justify-center shadow-lg">
@@ -98,16 +119,14 @@ const PneumoniaDetector = () => {
     );
   };
 
-  const examples = [
-    { type: 'image', value: exampleXRay, alt: 'Ejemplo de radiografía de tórax' },
-  ];
+  const examples = useMemo(() => shuffleArray(s3Examples), []);
 
   const projectDetails = {
     description: "Este modelo es una Red Neuronal Convolucional (CNN), posiblemente una arquitectura como ResNet o VGG, entrenada para identificar patrones de neumonía en imágenes de radiografías de tórax pediátricas. El objetivo es asistir a los profesionales de la salud en el diagnóstico temprano. El modelo fue entrenado con un dataset público de Kaggle y desplegado en AWS para inferencia.",
     metrics: [
       { name: "Arquitectura", value: "CNN (ResNet-based)" },
       { name: "Dataset", value: "Chest X-Ray (Kaggle)" },
-      { name: "Accuracy", value: "≈94%" },
+      { name: "Accuracy", value: "≈81%" },
       { name: "Clases", value: "Neumonía / Normal" },
     ],
     links: [
