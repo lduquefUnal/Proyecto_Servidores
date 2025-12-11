@@ -3,18 +3,20 @@ import os
 import base64
 import boto3
 
-# Cliente de SageMaker Runtime reutilizable
+# Reusable SageMaker Runtime client
 sagemaker_runtime = boto3.client("sagemaker-runtime")
 bedrock_runtime = boto3.client(
     "bedrock-runtime",
     region_name=os.environ.get("AWS_REGION", "us-east-1"),
 )
 
+# SageMaker endpoint mappings
 SAGEMAKER_ENDPOINTS = {
     "/predict/mnist_classical": os.environ.get("ENDPOINT_CLASSICO", "mnist-classical-endpoint"),
     "/predict/mnist_hybrid":   os.environ.get("ENDPOINT_HIBRIDO",  "mnist-quantum-endpoint"),
 }
 
+# Bedrock and DeepSeek paths
 BEDROCK_PATHS = [
     "/bedrock-chat",
     "/api/bedrock-chat",
@@ -25,37 +27,38 @@ DEEPSEEK_PATHS = [
     "/api/deepseek-chat",
 ]
 
+# System prompt for Bedrock chat
 SYSTEM_PROMPT = """
-Eres un asistente experto y preciso en:
-- Machine Learning y Deep Learning (descenso de gradiente y variantes, funciones de pérdida, optimización, arquitecturas profundas, regularización y técnicas de entrenamiento).
-- Computación cuántica (qubits, compuertas cuánticas, algoritmos variacionales, VQE, QAOA) y enfoques híbridos cuántico-clásicos aplicados a ML.
-- AWS y sus servicios relevantes (Bedrock, SageMaker, Lambda, API Gateway, IAM, S3, ECS/EKS, CI/CD).
+You are an expert and precise assistant in:
+- Machine Learning and Deep Learning (gradient descent and variants, loss functions, optimization, deep architectures, regularization, and training techniques).
+- Quantum computing (qubits, quantum gates, variational algorithms, VQE, QAOA) and hybrid quantum-classical approaches applied to ML.
+- AWS and its relevant services (Bedrock, SageMaker, Lambda, API Gateway, IAM, S3, ECS/EKS, CI/CD).
 
-Responde siempre como un chatbot: breve, cercano y natural, sin código. Sé claro, conciso, no inventes datos. Explica con rigor conceptual y, cuando aplique, sugiere buenas prácticas de despliegue e integración en AWS.
+Always respond as a chatbot: brief, friendly, and natural, without code. Be clear, concise, do not invent data. Explain with conceptual rigor and, when applicable, suggest good deployment and integration practices in AWS.
 """.strip()
 
 def lambda_handler(event, context):
     """
-    Lambda que actúa como proxy hacia los endpoints de SageMaker.
+    Lambda that acts as a proxy to SageMaker endpoints.
     """
 
-    print("EVENT:", json.dumps(event))  # para debug en CloudWatch
+    print("EVENT:", json.dumps(event))  # for debugging in CloudWatch
 
-    # Headers CORS
+    # CORS headers
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "OPTIONS,POST",
     }
 
-    # 1) Detectar el método correctamente (HTTP API v2 y REST API v1)
+    # 1) Detect the method correctly (HTTP API v2 and REST API v1)
     method = (
         event.get("requestContext", {}).get("http", {}).get("method")  # HTTP API (v2)
         or event.get("httpMethod")                                     # REST API (v1)
         or ""
     ).upper()
 
-    # 2) Responder el preflight CORS
+    # 2) Respond to preflight CORS
     if method == "OPTIONS":
         return {
             "statusCode": 200,
@@ -64,24 +67,24 @@ def lambda_handler(event, context):
         }
 
     try:
-        # 3) Obtener el path
+        # 3) Get the path
         # HTTP API v2 → rawPath; REST API v1 → path
         path = event.get("rawPath") or event.get("path", "")
         path = path.lower()
 
-        # 4) Obtener body (para POST sí debe venir algo)
+        # 4) Get body (must be present for POST)
         body = event.get("body")
         if not body:
             return {
                 "statusCode": 400,
                 "headers": headers,
-                "body": json.dumps({"error": "Cuerpo de la solicitud vacío."}),
+                "body": json.dumps({"error": "Request body is empty."}),
             }
 
         if event.get("isBase64Encoded"):
             body = base64.b64decode(body).decode("utf-8")
 
-        # RUTA BEDROCK (chat conceptual ML)
+        # BEDROCK ROUTE (conceptual ML chat)
         if any(p in path for p in BEDROCK_PATHS):
             payload = json.loads(body)
             user_prompt = payload.get("prompt") or payload.get("message") or ""
@@ -89,12 +92,12 @@ def lambda_handler(event, context):
                 return {
                     "statusCode": 400,
                     "headers": headers,
-                    "body": json.dumps({"error": "Falta 'prompt' en el cuerpo."}),
+                    "body": json.dumps({"error": "'prompt' is missing in the body."}),
                 }
 
             model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-v2")
 
-            # Modelos de Anthropic Claude 3 usan Messages API; Claude 2 usa prompt/completion.
+            # Anthropic Claude 3 models use Messages API; Claude 2 uses prompt/completion.
             if "claude-3" in model_id:
                 payload = {
                     "anthropic_version": "bedrock-2023-05-31",
@@ -133,7 +136,7 @@ def lambda_handler(event, context):
                 }
             else:
                 payload = {
-                    # Formato Anthropic v2: tras el prompt del sistema, debe venir "\n\nHuman:" y luego "\n\nAssistant:"
+                    # Anthropic v2 format: after the system prompt, it must be followed by "\n\nHuman:" and then "\n\nAssistant:"
                     "prompt": f"{SYSTEM_PROMPT}\n\nHuman: {user_prompt}\n\nAssistant:",
                     "max_tokens_to_sample": 800,
                     "temperature": 0.3,
@@ -152,11 +155,11 @@ def lambda_handler(event, context):
             result = json.loads(response["body"].read())
             if "content" in result:  # Claude 3 Messages API
                 content = result.get("content") or []
-                # Tomar el primer bloque de texto
+                # Take the first text block
                 text_blocks = [c.get("text", "") for c in content if c.get("type") == "text"]
                 reply = (text_blocks[0] if text_blocks else "").strip()
             elif "output" in result and isinstance(result["output"], dict) and "message" in result["output"]:
-                # Amazon Nova responde con output.message.content
+                # Amazon Nova responds with output.message.content
                 content = result["output"].get("message", {}).get("content") or []
                 text_blocks = [c.get("text", "") for c in content if c.get("text")]
                 reply = (text_blocks[0] if text_blocks else "").strip()
@@ -169,7 +172,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"response": reply}),
             }
 
-        # RUTA DEEPSEEK EN SAGEMAKER (Marketplace)
+        # DEEPSEEK ROUTE IN SAGEMAKER (Marketplace)
         if any(p in path for p in DEEPSEEK_PATHS):
             payload = json.loads(body)
             user_prompt = payload.get("prompt") or payload.get("message") or ""
@@ -177,7 +180,7 @@ def lambda_handler(event, context):
                 return {
                     "statusCode": 400,
                     "headers": headers,
-                    "body": json.dumps({"error": "Falta 'prompt' en el cuerpo."}),
+                    "body": json.dumps({"error": "'prompt' is missing in the body."}),
                 }
 
             endpoint_name = os.environ.get("DEEPSEEK_ENDPOINT", "endpoint-quick-start-8zqjp")
@@ -201,7 +204,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"response": reply}),
             }
 
-        # RUTAS SAGEMAKER
+        # SAGEMAKER ROUTES
         model_key = None
         for key in SAGEMAKER_ENDPOINTS:
             if key in path:
@@ -213,13 +216,13 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "headers": headers,
                 "body": json.dumps({
-                    "error": f"No se pudo determinar el modelo a partir de la ruta ({path})."
+                    "error": f"Could not determine the model from the path ({path})."
                 }),
             }
 
         endpoint_name = SAGEMAKER_ENDPOINTS[model_key]
 
-        # 5) Invocar SageMaker
+        # 5) Invoke SageMaker
         response = sagemaker_runtime.invoke_endpoint(
             EndpointName=endpoint_name,
             ContentType="application/json",
@@ -235,14 +238,14 @@ def lambda_handler(event, context):
         }
 
     except json.JSONDecodeError as e:
-        print(f"Error de decodificación JSON: {e}")
+        print(f"JSON decoding error: {e}")
         return {
             "statusCode": 400,
             "headers": headers,
-            "body": json.dumps({"error": "Cuerpo de la solicitud no es un JSON válido."}),
+            "body": json.dumps({"error": "Request body is not a valid JSON."}),
         }
     except Exception as e:
-        error_message = f"Error interno del servidor: {str(e)}"
+        error_message = f"Internal server error: {str(e)}"
         print(error_message)
         return {
             "statusCode": 500,

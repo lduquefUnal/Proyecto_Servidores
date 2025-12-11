@@ -25,3 +25,5 @@ dist-ssr
 .ipynb_checkpoints
 __pycache__S
 .venv
+.pyc
+.pyuser

@@ -1,0 +1,13 @@
+¡Hola! Aquí tienes un resumen de tus preguntas sobre el despliegue:
+
+*   **Código en `deploy.ipynb`**: El código es robusto, está bien documentado y se encarga de todo el proceso de despliegue de forma automática.
+*   **Archivos `tar.gz`**: La distribución es la correcta. Cada `tar.gz` contiene el modelo y el código de inferencia (`inference.py`) en la estructura que SageMaker espera.
+*   **Funcionamiento en SageMaker**: Sí, el notebook está diseñado para funcionar directamente si clonas el repositorio en SageMaker Studio. Las rutas son relativas y se ajustan automáticamente.
+*   **Versión de Python y Entry Point**:
+    *   La versión de Python (`py3`) es la correcta para los modelos.
+    *   El `entry_point` (`inference.py`) y el `source_dir` (`modelos/neumonia/code`, etc.) están configurados correctamente. No tienes que preocuparte por moverte a ninguna carpeta, el script se encarga de todo.
+*   **Dependencias**: Las librerías adicionales para el modelo de neumonía están en un `requirements.txt` que se instala automáticamente.
+
+**En resumen**: El proyecto está listo para ser clonado y ejecutado en SageMaker sin problemas. El código se encarga de todos los detalles de las rutas y las dependencias.
+
+Si tienes alguna otra duda, ¡pregunta sin problema!
