@@ -1,54 +1,55 @@
-# Project Processes
+# Procesos del Proyecto
 
-This document outlines the key processes involved in the project, from model training to deployment and interaction.
+Resumen en español de las etapas que implementamos, pensado para explicar rápido en la exposición: cómo entrenamos, empaquetamos, desplegamos y exponemos los modelos.
 
-## 1. Model Training and Preparation
+## 1. Entrenamiento y preparación de modelos
 
-The machine learning models used in this project are trained in separate Jupyter notebooks. Each model has its own training process, but they generally follow these steps:
+- **Trabajo en notebooks**: Cada modelo se entrena en su propio notebook de Jupyter (ej. `modelos/sentimientos`, `modelos/neumonia`).
+- **Pasos comunes**: carga y preprocesado de datos, definición del modelo (scikit-learn, PyTorch, etc.), entrenamiento y evaluación rápida.
+- **Artefactos**: guardamos el modelo en `.joblib` (o `.pth` para PyTorch) y preparamos el código de inferencia (`code/inference.py`, `code/__init__.py`, `code/requirements.txt`).
 
-1.  **Data Loading and Preprocessing**: Load the dataset and apply any necessary preprocessing steps, such as normalization, resizing, or vectorization.
-2.  **Model Definition**: Define the model architecture. This can be a scikit-learn pipeline, a PyTorch neural network, or any other model type.
-3.  **Training**: Train the model on the preprocessed data. This involves fitting the model to the training data and evaluating its performance on a validation set.
-4.  **Saving the Model**: Once the model is trained, save it to a file. For scikit-learn models, this is typically a `.joblib` file. For PyTorch models, it's a `.pth` file.
+## 2. Empaquetado para SageMaker (tar.gz sin cachés)
 
-After training, the models are prepared for deployment. This involves creating a `tar.gz` archive containing the model artifacts and the inference code.
+Usamos `tar` con exclusiones para no arrastrar `__pycache__`, `*.pyc` ni checkpoints de notebooks.
 
--   **Inference Code**: An `inference.py` script is created with the following functions, as required by SageMaker:
-    -   `model_fn(model_dir)`: Loads the saved model from the model directory.
-    -   `input_fn(request_body, request_content_type)`: Deserializes the input data from the request.
-    -   `predict_fn(input_data, model)`: Performs inference on the input data using the loaded model.
-    -   `output_fn(prediction, content_type)`: Serializes the prediction results to be sent back in the response.
--   **Creating the Archive**: The model artifacts (e.g., `model.joblib`, `vectorizer.joblib`) and the `code` directory (containing `inference.py`) are packaged into a `model.tar.gz` file.
+- **Sentimientos (SVM + CountVectorizer)**:
+  ```bash
+  tar -czvf modelos/sentimientos/svm_countvectorizer/model.tar.gz \
+    --exclude='*/__pycache__' --exclude='*.pyc' --exclude='*/.ipynb_checkpoints*' \
+    -C modelos/sentimientos/svm_countvectorizer \
+    model.joblib vectorizer.joblib \
+    code/inference.py code/__init__.py code/requirements.txt
+  ```
 
-## 2. Deployment to SageMaker
+- **Neumonía**:
+  ```bash
+  tar -czvf modelos/neumonia/model.tar.gz \
+    --exclude='*/__pycache__' --exclude='*.pyc' --exclude='*/.ipynb_checkpoints*' \
+    -C modelos/neumonia \
+    model.joblib \
+    code/inference.py code/__init__.py code/requirements.txt
+  ```
 
-The `deploy.ipynb` notebook orchestrates the deployment of the models to Amazon SageMaker. The process is as follows:
+## 3. Despliegue en SageMaker
 
-1.  **Upload to S3**: The `model.tar.gz` archives for each model are uploaded to an S3 bucket.
-2.  **Create SageMaker Model**: For each model, a `sagemaker.Model` object is created. This object points to the S3 location of the model archive and specifies the Docker image to use for serving (e.g., scikit-learn, PyTorch).
-3.  **Deploy to Endpoint**: The `deploy()` method is called on the SageMaker Model object to create an endpoint. This provisions the necessary infrastructure (e.g., EC2 instances) and deploys the model container.
+El notebook `deploy.ipynb` orquesta el despliegue:
+1) Subimos cada `model.tar.gz` a S3.
+2) Creamos el objeto `sagemaker.Model` apuntando al tar.gz y a la imagen (scikit-learn/PyTorch).
+3) Ejecutamos `deploy()` para crear el endpoint (provisiona la instancia y el contenedor).
 
-## 3. Lambda Proxy and API Gateway
+## 4. Proxy Lambda + API Gateway
 
-The `lambda_function.py` script and the API Gateway provide a serverless interface to the deployed models.
+- **Lambda (`lambda_function.py`)**: proxy único que recibe solicitudes HTTP, decide qué endpoint de SageMaker o Bedrock invocar, maneja CORS y errores. Usa variables de entorno para los nombres de endpoints/modelos.
+- **API Gateway**: expone la Lambda por HTTP (`POST` y `OPTIONS`), listo para que lo consuma el frontend.
 
--   **Lambda Function**:
-    -   Acts as a proxy that receives HTTP requests and invokes the appropriate SageMaker or Bedrock endpoint.
-    -   Handles CORS, request routing, and error handling.
-    -   Uses environment variables for configuration, making it easy to manage endpoint names.
--   **API Gateway**:
-    -   Provides a public HTTP endpoint that triggers the Lambda function.
-    -   Manages request/response transformations and authorizers (if needed).
+## 5. Interfaz web (React)
 
-## 4. Web Interface
+- Código en `page/`: componentes para carga de imágenes (MNIST/Neumonía), textos (sentimientos/chat) y visualización de resultados.
+- Consume la API de Gateway; configura la URL del endpoint en el cliente.
+- Para desarrollo local: `cd page && npm install && npm run dev`.
 
-The `page` directory contains a React-based web application that provides a user-friendly interface to interact with the models.
+## 6. Secuencia para demo
 
--   **Components**: The application is built with reusable React components for different functionalities, such as:
-    -   Image upload for the MNIST models.
-    -   Text input for the sentiment analysis and chat models.
-    -   Display of prediction results.
--   **API Integration**: The web application makes API calls to the API Gateway endpoint to send user input and receive model predictions.
--   **Deployment**: The React application is built and the static files (`index.html`, `main.jsx`, etc.) are deployed to an S3 bucket configured for static website hosting.
-
-This end-to-end architecture allows for a scalable and maintainable system where models can be updated and deployed independently of the web application, and the serverless backend handles the interaction between the two.
+1) Mostrar el flujo: Frontend → API Gateway → Lambda → Endpoints SageMaker / Bedrock.
+2) Hacer una inferencia en vivo (ej. imagen de neumonía o texto de sentimiento).
+3) Resaltar empaquetado limpio (tar.gz sin cachés) y despliegue automatizado desde el notebook.
