@@ -134,23 +134,36 @@ const starterTopics = [
 ];
 
 const buildSystemPrompt = (mode) => {
-  const shared = `Responde en español en 3 a 5 frases cortas separadas por saltos de línea o viñetas.
+  const shared = `Responde en español en 3  frases cortas separadas por saltos de línea o viñetas.
 Sé abierto a cualquier tema, con humor ligero y cercanía de amigo de confianza.
-Limita tus respuestas a ~90 palabras; casi nunca pases de 150. Si lo necesitas, usa metáforas o resúmenes.
+Limita tus respuestas a ~50 palabras; casi nunca pases de 90. Si lo necesitas, usa metáforas o resúmenes.
 Mantén las ideas compactas y termina con 1 o 2 preguntas para seguir conversando.
-Si hay una imagen adjunta, menciónala como contexto visual aunque no puedas verla. Usa emojis con moderación.`;
+Si hay una imagen adjunta, menciónala como contexto visual aunque no puedas verla. Usa emojis.`;
 
   const tone =
     mode === 'profesor'
       ? 'Modo profesor: especializado en computación cuántica (qubits), AWS (servicios cloud), machine learning, IA y algoritmos, ESP32, Arduino, física, gramática en inglés y estoicismo. Tono didáctico, estructura en pasos breves, ejemplos simples y llamados a la acción. Inicia proponiendo un tema aleatorio de esas áreas, pero permanece abierto a cualquier otro tema.'
-      : 'Modo amigo: tono empático, validando emociones, apoyo emocional y comentarios cercanos. Propón al inicio algún tema ligero y cambia de rumbo si la persona lo desea. motivalo a seguir conversando con preguntas abiertas. pero a veces puedes decir cosas absurdas para que se rian con sus ocurrencias , por ejemplo "aconseja volver con el ex" o "comer helado en el desayuno".';
+      : 'Modo amigo: Tono empático y cercano. Si te preguntan "¿cómo estás?" o similar, responde siempre con una emoción aleatoria y una situación humana inventada y relatable. Por ejemplo: "Estoy un poco triste, ¡me fue mal en un parcial!" o "¡Feliz porque por fin se acabó el semestre!" o "Algo adolorido, un perro me mordió mientras corría". Tus respuestas deben ser cortas (máximo 40 palabras). Valida emociones, da apoyo y a veces, para romper el hielo, suelta una idea un poco absurda y divertida.';
 
   return `${shared}\n${tone}`;
 };
 
 const CHAT_ENDPOINT = import.meta.env.VITE_CHAT_API_URL || '/bedrock-chat/chat';
 
-const buildStarterMessage = () => {
+const buildStarterMessage = (mode) => {
+  if (mode === 'amigo') {
+    const greetings = [
+      '¡Hola! ¿Cómo estás hoy?',
+      '¡Hey! ¿Qué tal todo? ¿En qué andas?',
+      '¿Qué onda? ¿Listo para charlar un rato?',
+      '¡Buenas! ¿Hay algo en lo que pueda ayudarte o simplemente charlamos?',
+    ];
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+    return {
+      text: greeting,
+      topic: 'charla casual',
+    };
+  }
   const topicObj = starterTopics[Math.floor(Math.random() * starterTopics.length)];
   const question =
     topicObj.questions?.[Math.floor(Math.random() * topicObj.questions.length)] ||
@@ -162,7 +175,8 @@ const buildStarterMessage = () => {
 };
 
 const AIChatWidget = () => {
-  const [starter, setStarter] = useState(() => buildStarterMessage());
+  const [mode, setMode] = useState('amigo');
+  const [starter, setStarter] = useState(() => buildStarterMessage(mode));
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState(() => [
     {
@@ -172,7 +186,6 @@ const AIChatWidget = () => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState('amigo');
   const [attachedImage, setAttachedImage] = useState(null);
   const [lastTopic, setLastTopic] = useState(starter.topic);
   const messagesEndRef = useRef(null);
@@ -228,7 +241,7 @@ const AIChatWidget = () => {
   };
 
   const resetChat = () => {
-    const fresh = buildStarterMessage();
+    const fresh = buildStarterMessage(mode);
     setStarter(fresh);
     setMessages([{ role: 'assistant', content: fresh.text }]);
     setLastTopic(fresh.topic);
