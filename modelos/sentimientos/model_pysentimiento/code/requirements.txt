@@ -1,4 +1,6 @@
-transformers
-torch
-pysentimiento
-accelerate
+accelerate==0.27.2
+numpy==1.24.4
+pysentimiento==0.7.3
+sentencepiece==0.1.99
+torch==2.1.2
+transformers==4.38.2

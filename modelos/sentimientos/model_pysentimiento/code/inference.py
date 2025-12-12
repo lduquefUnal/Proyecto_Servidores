@@ -165,7 +165,6 @@ def predict_fn(inputs: List[str], model_info: Dict[str, Any]) -> List[Dict[str, 
         for j in range(probabilities.shape[1]):
             lbl = _map_label(id2label.get(j, "NEU"))
             prob_dict[lbl] = float(probabilities[idx][j].item())
-a
         results.append({
             "label": mapped_label,
             "probabilities": prob_dict,
