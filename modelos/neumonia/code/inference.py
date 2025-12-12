@@ -46,38 +46,26 @@ def procesar_imagen(img, umbral=130, num_areas=2, kernel_size=(7, 7)):
     return cv2.bitwise_and(filtered, img)
 
 def extract_features(img):
+    # Extrae solo las variables usadas en entrenamiento/inferencia
     feats = {}
-    img_proc = morphology.remove_small_objects(img.astype(bool), min_size=20)
-    label_img = label(img_proc)
     moments = cv2.moments(img)
     hu = cv2.HuMoments(moments).flatten()
-    for i in range(7):
-        feats[f'hu{i}'] = round_to_sig_figs(np.sign(hu[i]) * np.log(np.abs(hu[i]) + 1e-10), 6)
-
-    non_zero = img[img > 0]
-    feats['avg_intensity'] = round_to_sig_figs(np.mean(non_zero) if non_zero.size else 0, 6)
+    for i in range(4):
+        feats[f"hu{i}"] = round_to_sig_figs(np.sign(hu[i]) * np.log(np.abs(hu[i]) + 1e-10), 6)
 
     hist = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
-    feats['hist_mean'] = round_to_sig_figs(np.mean(hist), 6)
-    feats['hist_std'] = round_to_sig_figs(np.std(hist), 6)
-    feats['hist_skewness'] = round_to_sig_figs(pd.Series(hist).skew(), 6)
-    feats['hist_kurtosis'] = round_to_sig_figs(pd.Series(hist).kurtosis(), 6)
-
-    edges = cv2.Canny(img, 100, 200)
-    feats['edge_density'] = round_to_sig_figs(np.sum(edges) / img.size, 6)
+    feats["hist_mean"] = round_to_sig_figs(np.mean(hist), 6)
+    feats["hist_std"] = round_to_sig_figs(np.std(hist), 6)
+    feats["hist_kurtosis"] = round_to_sig_figs(pd.Series(hist).kurtosis(), 6)
 
     f_shift = np.fft.fftshift(np.fft.fft2(img))
     mag = 20 * np.log(np.abs(f_shift) + 1e-10)
-    feats['fourier_mean'] = round_to_sig_figs(np.mean(mag), 6)
-    feats['fourier_std'] = round_to_sig_figs(np.std(mag), 6)
+    feats["fourier_mean"] = round_to_sig_figs(np.mean(mag), 6)
+    feats["fourier_std"] = round_to_sig_figs(np.std(mag), 6)
 
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        c = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(c)
-    else:
-        area = 0.0
-    feats['area'] = round_to_sig_figs(area, 6)
+    area = cv2.contourArea(max(contours, key=cv2.contourArea)) if contours else 0.0
+    feats["area"] = round_to_sig_figs(area, 6)
     return feats
 
 def _prepare_dataframe(feats):
