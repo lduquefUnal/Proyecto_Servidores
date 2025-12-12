@@ -1,6 +1,7 @@
-accelerate==0.27.2
-numpy==1.24.4
-pysentimiento==0.7.3
-sentencepiece==0.1.99
-torch==2.1.2
+# requirements.txt para el modelo basado en Transformers
+
+# Librería principal de Hugging Face para cargar el modelo y el tokenizador
 transformers==4.38.2
+
+# PyTorch es requerido por transformers para ejecutar el modelo
+torch==2.1.2
